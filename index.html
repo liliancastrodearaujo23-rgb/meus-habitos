@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotina da Lili</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen flex items-center justify-center" style="font-family: 'Inter', sans-serif;">
+
+<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6">
+  
+  <!-- HEADER -->
+  <div class="mb-5 text-center">
+    <p id="date" class="text-sm text-gray-400"></p>
+    <h1 class="text-3xl text-pink-500" style="font-family: 'Playfair Display', serif;">Rotina da Lili 🌷</h1>
+    <p class="text-gray-500 text-sm mt-1">No dia seguinte, a gente nunca se arrepende de ter feito 💫</p>
+    <p class="mt-3 text-sm font-semibold text-pink-600"><span id="progress">0</span> de <span id="total">0</span> concluídos</p>
+  </div>
+
+  <!-- FADINHA -->
+  <div class="text-center mb-4">
+    <div id="mascot" class="text-5xl transition-all duration-500">🧚‍♀️</div>
+    <p id="mascotText" class="text-sm text-gray-500">Que hábitos você vai completar hoje?</p>
+  </div>
+
+  <!-- CALENDÁRIO -->
+  <div class="mb-6">
+    <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
+    <div id="calendar" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+  </div>
+
+  <!-- ADD TASK -->
+  <div class="mb-4 flex gap-2">
+    <input id="newTask" placeholder="Nova tarefa..." class="flex-1 border rounded-xl px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300"/>
+    <button onclick="addTask()" class="bg-pink-400 hover:bg-pink-500 text-white px-3 rounded-xl transition">+</button>
+  </div>
+
+  <!-- TASKS -->
+  <div id="tasks" class="space-y-4"></div>
+
+  <!-- STATS -->
+  <div class="mt-6 p-4 bg-pink-50 rounded-2xl text-center">
+    <p class="text-sm text-gray-500">Sequência atual</p>
+    <p id="streak" class="text-2xl font-bold text-pink-500">0</p>
+
+    <p class="text-sm text-gray-500 mt-2">Melhor sequência</p>
+    <p id="best" class="text-xl font-semibold text-pink-400">0</p>
+  </div>
+
+  <!-- TIME DASHBOARD -->
+  <div class="mt-6 p-4 bg-rose-50 rounded-2xl text-center">
+    <p class="text-sm text-gray-500">Tempo investido</p>
+    <p>Hoje: <span id="todayTime">0</span> min</p>
+    <p>Semana: <span id="weekTime">0</span> min</p>
+    <p>Mês: <span id="monthTime">0</span> min</p>
+  </div>
+
+  <!-- WEEK GRAPH -->
+  <div class="mt-6">
+    <h3 class="text-sm font-semibold text-gray-500 mb-2">Evolução semanal</h3>
+    <div id="weekGraph" class="flex items-end gap-1 h-24"></div>
+  </div>
+
+</div>
+
+<script>
+let tasksList = JSON.parse(localStorage.getItem("tasksList")) || [
+  {name:"Devocional", type:"time"},
+  {name:"Inglês", type:"time"},
+  {name:"Yoga", type:"time"},
+  {name:"Jump", type:"time"},
+  {name:"Sem doce", type:"check"},
+  {name:"Sem gastos", type:"check"}
+];
+
+let data = JSON.parse(localStorage.getItem("habits")) || {};
+
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+
+function formatDate(){
+  return new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'short'});
+}
+
+function addTask(){
+  const input = document.getElementById("newTask");
+  if(!input.value) return;
+  tasksList.push({name:input.value, type:"time"});
+  localStorage.setItem("tasksList", JSON.stringify(tasksList));
+  input.value="";
+  render();
+}
+
+function render(){
+  document.getElementById("date").innerText = formatDate();
+
+  const container = document.getElementById("tasks");
+  container.innerHTML="";
+
+  const today = todayKey();
+  let doneCount=0;
+
+  tasksList.forEach(task=>{
+    const done = data[today] && data[today][task.name];
+    if(done) doneCount++;
+
+    const div=document.createElement("div");
+    div.className="p-4 rounded-2xl shadow flex flex-col gap-3 transition-all duration-300 "+(done?"bg-pink-100 scale-[1.02]":"bg-white");
+
+    let timesHTML = "";
+    if(task.type==="time"){
+      timesHTML = `<div class="flex gap-2">${[10,15,30].map(t=>`<button onclick="setTime('${task.name}',${t})" class="flex-1 py-1 rounded-xl text-sm transition ${done && data[today][task.name]?.time===t?'bg-pink-400 text-white':'bg-gray-100'}">${t} min</button>`).join('')}</div>`;
+    }
+
+    div.innerHTML=`
+      <div class="flex justify-between items-center">
+        <span class="font-semibold">${task.name}</span>
+        <button onclick="toggle('${task.name}')" class="w-10 h-10 rounded-full flex items-center justify-center transition ${done?'bg-pink-500 text-white':'bg-gray-200'}">${done?'✔':''}</button>
+      </div>
+      ${timesHTML}
+    `;
+
+    container.appendChild(div);
+  });
+
+  document.getElementById("progress").innerText=doneCount;
+  document.getElementById("total").innerText=tasksList.length;
+
+  updateMascot(doneCount);
+  calculateTime();
+  updateStats();
+  renderGraph();
+  renderCalendar();
+}
+
+function updateMascot(done){
+  const total = tasksList.length;
+  const mascot = document.getElementById("mascot");
+  const text = document.getElementById("mascotText");
+
+  if(done === total){
+    mascot.innerText = "🧚‍♀️✨";
+    text.innerText = "Perfeição, Lili! 💖";
+  } else if(done >= 3){
+    mascot.innerText = "🧚‍♀️";
+    text.innerText = "Mandando bem! 🌸";
+  } else if(done > 0){
+    mascot.innerText = "🧚";
+    text.innerText = "Bom começo ✨";
+  } else {
+    mascot.innerText = "🧚‍♀️";
+    text.innerText = "Bora começar?";
+  }
+}
+
+function toggle(task){
+  const today=todayKey();
+  if(!data[today]) data[today]={};
+  data[today][task]=data[today][task]?null:{time:0};
+  save();
+}
+
+function setTime(task,time){
+  const today=todayKey();
+  if(!data[today]) data[today]={};
+  data[today][task]={time};
+  save();
+}
+
+function save(){
+  localStorage.setItem("habits", JSON.stringify(data));
+  render();
+}
+
+function updateStats(){
+  const dates=Object.keys(data).sort().reverse();
+  let streak=0,best=0,current=0;
+
+  for(let d of dates){
+    const allDone = tasksList.every(t=>data[d]?.[t.name]);
+    if(allDone){ current++; if(current>best) best=current; }
+    else current=0;
+  }
+
+  document.getElementById("streak").innerText=current;
+  document.getElementById("best").innerText=best;
+}
+
+function calculateTime(){
+  let today=0,week=0,month=0;
+  const now=new Date();
+
+  for(let date in data){
+    let sum=0;
+    for(let t in data[date]){
+      sum+=data[date][t]?.time||0;
+    }
+
+    const d=new Date(date);
+    if(d.toDateString()===now.toDateString()) today+=sum;
+    if(now-d<=7*24*60*60*1000) week+=sum;
+    if(d.getMonth()===now.getMonth()) month+=sum;
+  }
+
+  document.getElementById("todayTime").innerText=today;
+  document.getElementById("weekTime").innerText=week;
+  document.getElementById("monthTime").innerText=month;
+}
+
+function renderGraph(){
+  const graph=document.getElementById("weekGraph");
+  graph.innerHTML="";
+
+  for(let i=6;i>=0;i--){
+    const d=new Date();
+    d.setDate(d.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+
+    let sum=0;
+    if(data[key]){
+      for(let t in data[key]) sum+=data[key][t]?.time||0;
+    }
+
+    const bar=document.createElement("div");
+    bar.className="flex-1 bg-pink-400 rounded";
+    bar.style.height=(sum*2)+"px";
+    graph.appendChild(bar);
+  }
+}
+
+function renderCalendar(){
+  const calendar=document.getElementById("calendar");
+  calendar.innerHTML="";
+
+  const now=new Date();
+  const year=now.getFullYear();
+  const month=now.getMonth();
+
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+
+  for(let i=0;i<firstDay;i++){
+    calendar.innerHTML += `<div></div>`;
+  }
+
+  for(let day=1;day<=daysInMonth;day++){
+    const date=new Date(year,month,day).toISOString().slice(0,10);
+
+    let completed = data[date] && tasksList.every(t=>data[date]?.[t.name]);
+    let partial = data[date] && Object.keys(data[date]).length>=3;
+
+    let color = "bg-gray-100";
+    if(completed) color = "bg-pink-500 text-white";
+    else if(partial) color = "bg-pink-300 text-white";
+
+    calendar.innerHTML += `<div class="p-2 rounded-lg ${color}">${day}</div>`;
+  }
+}
+
+render();
+</script>
+
+</body>
+</html>
