@@ -204,24 +204,45 @@ function updateMessage(count){
   }
 }
 
-// TEMPO
+// TEMPO (AGORA INDEPENDENTE)
 function selectTime(task, minutes){
   const today = todayKey();
   if(!data[today]) data[today]={};
 
-  if(!data[today][task]) data[today][task]={};
+  const current = data[today][task];
 
-  data[today][task].time = minutes;
+  if(current?.time === minutes){
+    delete data[today][task].time;
+
+    if(!data[today][task].done){
+      delete data[today][task];
+    }
+  } else {
+    if(!data[today][task]) data[today][task]={};
+    data[today][task].time = minutes;
+  }
+
   save();
 }
 
+// CHECK (INDEPENDENTE)
 function toggleCheck(task){
   const today = todayKey();
   if(!data[today]) data[today]={};
 
-  if(!data[today][task]) data[today][task]={};
+  const current = data[today][task];
 
-  data[today][task].done = !data[today][task].done;
+  if(current?.done){
+    current.done = false;
+
+    if(!current.time){
+      delete data[today][task];
+    }
+  } else {
+    if(!data[today][task]) data[today][task]={};
+    data[today][task].done = true;
+  }
+
   save();
 }
 
@@ -284,7 +305,7 @@ function renderChart(){
 
   Object.entries(data).forEach(([date,day])=>{
     const d = new Date(date);
-    const diffDays = (now - d) / (1000*60*60*24);
+    const diffDays = Math.floor((now - d) / (1000*60*60*24));
 
     if(
       (viewMode === "week" && diffDays <= 7) ||
