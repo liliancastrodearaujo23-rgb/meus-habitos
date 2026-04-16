@@ -13,13 +13,8 @@
 <style>
 *{box-sizing:border-box}
 
-@keyframes confetti-fall {
-  0% { transform: translateY(-10px); opacity: 1; }
-  100% { transform: translateY(60px); opacity: 0; }
-}
 .confetti {
   position: absolute;
-  animation: confetti-fall 0.8s ease forwards;
 }
 </style>
 </head>
@@ -28,7 +23,6 @@
 
 <div class="bg-white w-full max-w-md mx-auto rounded-3xl shadow-xl p-5">
 
-<!-- HEADER -->
 <div class="text-center mb-4">
   <p id="date" class="text-sm text-gray-400"></p>
   <h1 class="text-3xl text-pink-500">Rotina da Lili 🌷</h1>
@@ -38,16 +32,13 @@
   </p>
 </div>
 
-<!-- TAREFAS -->
 <div id="tasks" class="space-y-3 mb-6"></div>
 
-<!-- DASHBOARD -->
 <div class="mb-6">
   <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu tempo</h3>
   <canvas id="chart"></canvas>
 </div>
 
-<!-- CALENDÁRIO (AGORA NO FINAL) -->
 <div>
   <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
   <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center"></div>
@@ -84,106 +75,12 @@ function render(){
   let totalTime=0;
 
   tasksList.forEach(task=>{
-    const done = data[today]?.[task.name];
+    const selectedTime = data[today]?.[task.name];
 
-    if(done){
+    if(selectedTime){
       doneCount++;
-      totalTime += done;
+      totalTime += selectedTime;
     }
 
     const div=document.createElement("div");
-    div.className="p-4 rounded-2xl shadow bg-white";
-
-    div.innerHTML=`
-      <div class="flex justify-between items-center">
-        <span>${task.icon} ${task.name}</span>
-        <button onclick="toggle('${task.name}',30,this)" 
-        class="w-10 h-10 rounded-full ${done?'bg-pink-500 text-white':'bg-gray-200'}">
-        ${done?'✔':''}
-        </button>
-      </div>
-
-      <div class="flex gap-2 mt-3">
-        <button onclick="toggle('${task.name}',10,this)" class="flex-1 bg-gray-100 rounded-full py-1">10 min</button>
-        <button onclick="toggle('${task.name}',15,this)" class="flex-1 bg-gray-100 rounded-full py-1">15 min</button>
-        <button onclick="toggle('${task.name}',30,this)" class="flex-1 bg-gray-100 rounded-full py-1">30 min</button>
-      </div>
-    `;
-
-    container.appendChild(div);
-  });
-
-  document.getElementById("progress").innerText=doneCount;
-  document.getElementById("total").innerText=tasksList.length;
-
-  renderChart();
-  renderCalendar();
-}
-
-function toggle(task, minutes){
-  const today=todayKey();
-  if(!data[today]) data[today]={};
-
-  data[today][task]=minutes;
-
-  save();
-}
-
-function save(){
-  localStorage.setItem("habits", JSON.stringify(data));
-  render();
-}
-
-function getWeekData(){
-  let total=0;
-  Object.values(data).forEach(day=>{
-    Object.values(day).forEach(time=> total+=time);
-  });
-  return total;
-}
-
-let chart;
-
-function renderChart(){
-  const ctx=document.getElementById("chart");
-
-  const total=getWeekData();
-
-  if(chart) chart.destroy();
-
-  chart=new Chart(ctx,{
-    type:"bar",
-    data:{
-      labels:["Tempo total (min)"],
-      datasets:[{
-        data:[total]
-      }]
-    }
-  });
-}
-
-function renderCalendar(){
-  const calendar=document.getElementById("calendar");
-  calendar.innerHTML="";
-
-  const now=new Date();
-  const year=now.getFullYear();
-  const month=now.getMonth();
-
-  const firstDay=new Date(year,month,1).getDay();
-  const daysInMonth=new Date(year,month+1,0).getDate();
-
-  for(let i=0;i<firstDay;i++){
-    calendar.innerHTML += `<div></div>`;
-  }
-
-  for(let day=1;day<=daysInMonth;day++){
-    calendar.innerHTML += `<div class="p-2 rounded bg-gray-100">${day}</div>`;
-  }
-}
-
-render();
-</script>
-
-</body>
-</html>
+    div.className="p-4
