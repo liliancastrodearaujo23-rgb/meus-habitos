@@ -222,10 +222,20 @@ function updateProgressBar(done,total){
 // ===== MENSAGEM
 function updateMessage(count){
   const text = document.getElementById("message");
+  const total = tasksList.length;
 
-  if(count>=3) text.innerText="Você está indo muito bem 🔥";
-  else if(count>=1) text.innerText="Já é um bom começo 💫";
-  else text.innerText="Que hábito você vai praticar hoje?";
+  if(count === total){
+    text.innerText = "Perfeito, Lili! Você cumpriu tudo hoje 🧚‍♀️✨";
+  }
+  else if(count >= 3){
+    text.innerText = "Você está indo muito bem 🔥";
+  }
+  else if(count >= 1){
+    text.innerText = "Já é um bom começo 💫";
+  }
+  else{
+    text.innerText = "Que hábito você vai praticar hoje?";
+  }
 }
 
 // ===== RESUMO
