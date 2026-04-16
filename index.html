@@ -39,7 +39,6 @@
     <span id="progress">0</span>/<span id="total">0</span>
   </p>
 
-  <!-- barra -->
   <div class="mt-3">
     <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
       <div id="progressBar" class="h-3 rounded-full transition-all duration-500" style="width:0%"></div>
@@ -50,13 +49,11 @@
 
 <div id="tasks" class="space-y-3 mb-6"></div>
 
-<!-- RESUMO -->
 <div class="mb-6 p-4 bg-gray-50 rounded-2xl text-center">
   <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu tempo total</h3>
   <p id="timeSummary" class="text-sm text-gray-600"></p>
 </div>
 
-<!-- CALENDÁRIO -->
 <div>
   <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
   <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center"></div>
@@ -74,15 +71,7 @@ let tasksList = [
   {name:"Sem gastos", icon:"💸", type:"check"}
 ];
 
-let rawData = JSON.parse(localStorage.getItem("habits")) || {};
-let data = {};
-
-Object.keys(rawData).forEach(day=>{
-  data[day]={};
-  Object.keys(rawData[day]).forEach(task=>{
-    data[day][task]=rawData[day][task];
-  });
-});
+let data = JSON.parse(localStorage.getItem("habits")) || {};
 
 function todayKey(){
   return new Date().toISOString().slice(0,10);
@@ -163,13 +152,17 @@ function render(){
   renderCalendar();
 }
 
-// ações
 function selectTime(task, minutes){
   const today = todayKey();
   if(!data[today]) data[today]={};
   if(!data[today][task]) data[today][task]={};
 
-  data[today][task].time = minutes;
+  if(data[today][task].time === minutes){
+    delete data[today][task].time;
+  } else {
+    data[today][task].time = minutes;
+  }
+
   save();
 }
 
@@ -195,7 +188,6 @@ function save(){
   render();
 }
 
-// barra
 function updateProgressBar(done,total){
   const percent = Math.round((done/total)*100);
   const bar = document.getElementById("progressBar");
@@ -212,7 +204,6 @@ function updateProgressBar(done,total){
   text.innerText = percent>0 ? `${percent}% do dia concluído` : "";
 }
 
-// mensagem
 function updateMessage(count){
   const box = document.getElementById("messageBox");
   const text = document.getElementById("message");
@@ -239,7 +230,6 @@ function updateMessage(count){
   text.innerText=msg;
 }
 
-// resumo tempo
 function updateSummary(){
   let total=0;
 
@@ -257,7 +247,6 @@ function updateSummary(){
     `${total} min • ${hours}h ${minutes}min • ${days} dias`;
 }
 
-// calendário
 function renderCalendar(){
   const calendar=document.getElementById("calendar");
   calendar.innerHTML="";
