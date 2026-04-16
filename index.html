@@ -1,65 +1,73 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rotina da Lili</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    @keyframes confetti-fall {
-      0% { transform: translateY(-10px) scale(1); opacity: 1; }
-      100% { transform: translateY(60px) scale(0.8); opacity: 0; }
-    }
+<title>Rotina da Lili</title>
 
-    .confetti {
-      position: absolute;
-      font-size: 14px;
-      animation: confetti-fall 0.8s ease forwards;
-      pointer-events: none;
-    }
-  </style>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{box-sizing:border-box}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px); opacity: 1; }
+  100% { transform: translateY(60px); opacity: 0; }
+}
+.confetti {
+  position: absolute;
+  animation: confetti-fall 0.8s ease forwards;
+}
+</style>
 </head>
 
-<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen flex items-center justify-center" style="font-family: 'Inter', sans-serif;">
+<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen p-3">
 
-<div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 relative">
-  
-  <div class="mb-5 text-center">
-    <p id="date" class="text-sm text-gray-400"></p>
-    <h1 class="text-3xl text-pink-500" style="font-family: 'Playfair Display', serif;">Rotina da Lili 🌷</h1>
-    <p class="text-gray-500 text-sm mt-1">No dia seguinte, a gente nunca se arrepende de ter feito 💫</p>
-    <p class="mt-3 text-sm font-semibold text-pink-600"><span id="progress">0</span> de <span id="total">0</span> concluídos</p>
-  </div>
+<div class="bg-white w-full max-w-md mx-auto rounded-3xl shadow-xl p-5">
 
-  <div class="text-center mb-4">
-    <div id="mascot" class="text-5xl">🧚‍♀️</div>
-    <p id="mascotText" class="text-sm text-gray-500">Que hábitos você vai completar hoje?</p>
-  </div>
+<!-- HEADER -->
+<div class="text-center mb-4">
+  <p id="date" class="text-sm text-gray-400"></p>
+  <h1 class="text-3xl text-pink-500">Rotina da Lili 🌷</h1>
+  <p class="text-gray-500 text-sm">Você não vai se arrepender 💫</p>
+  <p class="mt-2 text-sm text-pink-600">
+    <span id="progress">0</span>/<span id="total">0</span>
+  </p>
+</div>
 
-  <div class="mb-6">
-    <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
-    <div id="calendar" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
-  </div>
+<!-- TAREFAS -->
+<div id="tasks" class="space-y-3 mb-6"></div>
 
-  <div id="tasks" class="space-y-4"></div>
+<!-- DASHBOARD -->
+<div class="mb-6">
+  <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu tempo</h3>
+  <canvas id="chart"></canvas>
+</div>
+
+<!-- CALENDÁRIO (AGORA NO FINAL) -->
+<div>
+  <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
+  <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center"></div>
+</div>
 
 </div>
 
 <script>
-let tasksList = JSON.parse(localStorage.getItem("tasksList")) || [
-  {name:"Devocional", icon:"📖", type:"time"},
-  {name:"Inglês", icon:"📚", type:"time"},
-  {name:"Yoga", icon:"🧘‍♀️", type:"time"},
-  {name:"Jump", icon:"🏃‍♀️", type:"time"},
-  {name:"Sem doce", icon:"🍫", type:"check"},
-  {name:"Sem gastos", icon:"💸", type:"check"}
+let tasksList = [
+  {name:"Devocional", icon:"📖"},
+  {name:"Inglês", icon:"📚"},
+  {name:"Yoga", icon:"🧘‍♀️"},
+  {name:"Jump", icon:"🏃‍♀️"}
 ];
 
 let data = JSON.parse(localStorage.getItem("habits")) || {};
 
-function todayKey(){ return new Date().toISOString().slice(0,10); }
+function todayKey(){
+  return new Date().toISOString().slice(0,10);
+}
 
 function formatDate(){
   return new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'short'});
@@ -73,20 +81,33 @@ function render(){
 
   const today = todayKey();
   let doneCount=0;
+  let totalTime=0;
 
   tasksList.forEach(task=>{
-    const done = data[today] && data[today][task.name];
-    if(done) doneCount++;
+    const done = data[today]?.[task.name];
+
+    if(done){
+      doneCount++;
+      totalTime += done;
+    }
 
     const div=document.createElement("div");
-    div.className="p-4 rounded-2xl shadow flex justify-between items-center relative "+(done?"bg-pink-100":"bg-white");
+    div.className="p-4 rounded-2xl shadow bg-white";
 
     div.innerHTML=`
-      <span class="font-semibold flex items-center gap-2">
-        <span class="emoji">${task.icon}</span>
-        ${task.name}
-      </span>
-      <button onclick="toggle('${task.name}', this)" class="w-10 h-10 rounded-full ${done?'bg-pink-500 text-white':'bg-gray-200'}">${done?'✔':''}</button>
+      <div class="flex justify-between items-center">
+        <span>${task.icon} ${task.name}</span>
+        <button onclick="toggle('${task.name}',30,this)" 
+        class="w-10 h-10 rounded-full ${done?'bg-pink-500 text-white':'bg-gray-200'}">
+        ${done?'✔':''}
+        </button>
+      </div>
+
+      <div class="flex gap-2 mt-3">
+        <button onclick="toggle('${task.name}',10,this)" class="flex-1 bg-gray-100 rounded-full py-1">10 min</button>
+        <button onclick="toggle('${task.name}',15,this)" class="flex-1 bg-gray-100 rounded-full py-1">15 min</button>
+        <button onclick="toggle('${task.name}',30,this)" class="flex-1 bg-gray-100 rounded-full py-1">30 min</button>
+      </div>
     `;
 
     container.appendChild(div);
@@ -95,35 +116,15 @@ function render(){
   document.getElementById("progress").innerText=doneCount;
   document.getElementById("total").innerText=tasksList.length;
 
+  renderChart();
   renderCalendar();
 }
 
-function createConfetti(button){
-  for(let i=0;i<6;i++){
-    const conf=document.createElement("span");
-    conf.className="confetti";
-    conf.innerText="🎉";
-
-    conf.style.left = Math.random()*40 + "px";
-    conf.style.top = "0px";
-
-    button.parentElement.appendChild(conf);
-
-    setTimeout(()=>conf.remove(),800);
-  }
-}
-
-function toggle(task, btn){
+function toggle(task, minutes){
   const today=todayKey();
   if(!data[today]) data[today]={};
 
-  const wasDone = data[today][task];
-
-  data[today][task]=data[today][task]?null:{time:0};
-
-  if(!wasDone){
-    createConfetti(btn);
-  }
+  data[today][task]=minutes;
 
   save();
 }
@@ -131,6 +132,34 @@ function toggle(task, btn){
 function save(){
   localStorage.setItem("habits", JSON.stringify(data));
   render();
+}
+
+function getWeekData(){
+  let total=0;
+  Object.values(data).forEach(day=>{
+    Object.values(day).forEach(time=> total+=time);
+  });
+  return total;
+}
+
+let chart;
+
+function renderChart(){
+  const ctx=document.getElementById("chart");
+
+  const total=getWeekData();
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:["Tempo total (min)"],
+      datasets:[{
+        data:[total]
+      }]
+    }
+  });
 }
 
 function renderCalendar(){
@@ -149,18 +178,10 @@ function renderCalendar(){
   }
 
   for(let day=1;day<=daysInMonth;day++){
-    const date=new Date(year,month,day).toISOString().slice(0,10);
-
-    let completed = data[date] && tasksList.every(t=>data[date]?.[t.name]);
-    let partial = data[date] && Object.keys(data[date]).length>=3;
-
-    let color = "bg-gray-100";
-    if(completed) color = "bg-pink-500 text-white";
-    else if(partial) color = "bg-pink-300 text-white";
-
-    calendar.innerHTML += `<div class="p-2 rounded-lg ${color}">${day}</div>`;
+    calendar.innerHTML += `<div class="p-2 rounded bg-gray-100">${day}</div>`;
   }
 }
+
 render();
 </script>
 
