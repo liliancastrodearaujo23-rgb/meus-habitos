@@ -12,6 +12,19 @@
 
 <style>
 *{box-sizing:border-box}
+
+@keyframes fall {
+  0% { transform: translateY(-10px) rotate(0); opacity: 1; }
+  100% { transform: translateY(80px) rotate(360deg); opacity: 0; }
+}
+
+.confetti {
+  position: fixed;
+  top: 0;
+  font-size: 18px;
+  animation: fall 1s linear forwards;
+  pointer-events: none;
+}
 </style>
 </head>
 
@@ -22,7 +35,8 @@
 <div class="text-center mb-4">
   <p id="date" class="text-sm text-gray-400"></p>
   <h1 class="text-3xl text-pink-500">Rotina da Lili 🌷</h1>
-  <p class="text-gray-500 text-sm">Você não vai se arrepender 💫</p>
+  <p id="message" class="text-gray-500 text-sm">Que hábitos você vai completar hoje?</p>
+
   <p class="mt-2 text-sm text-pink-600">
     <span id="progress">0</span>/<span id="total">0</span>
   </p>
@@ -43,23 +57,52 @@
 </div>
 
 <script>
+// ---------- SOM ----------
+const sound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=success-1-6297.mp3");
+
+function playSound(strong=false){
+  sound.currentTime = 0;
+  sound.play().catch(()=>{});
+  if(strong){
+    setTimeout(()=> sound.play().catch(()=>{}),150);
+  }
+}
+
+// ---------- CONFETE ----------
+function launchConfetti(strong=false){
+  const emojis = ["🎉","✨","💖","🌸"];
+  const amount = strong ? 25 : 12;
+
+  for(let i=0;i<amount;i++){
+    const el = document.createElement("div");
+    el.className = "confetti";
+    el.innerText = emojis[Math.floor(Math.random()*emojis.length)];
+    el.style.left = Math.random()*100 + "vw";
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1000);
+  }
+}
+
+// ---------- TAREFAS ----------
 let tasksList = [
-  {name:"Devocional", icon:"📖"},
-  {name:"Inglês", icon:"📚"},
-  {name:"Yoga", icon:"🧘‍♀️"},
-  {name:"Jump", icon:"🏃‍♀️"}
+  {name:"Devocional", icon:"📖", type:"time"},
+  {name:"Inglês", icon:"📚", type:"time"},
+  {name:"Yoga", icon:"🧘‍♀️", type:"time"},
+  {name:"Jump", icon:"🏃‍♀️", type:"time"},
+  {name:"Sem doce", icon:"🍫", type:"check"},
+  {name:"Sem gastos", icon:"💸", type:"check"}
 ];
 
-// 🔥 limpa dados antigos bugados automaticamente
+// ---------- DADOS ----------
 let rawData = JSON.parse(localStorage.getItem("habits")) || {};
 let data = {};
 
-// normaliza dados
+// limpa dados antigos quebrados
 Object.keys(rawData).forEach(day=>{
-  data[day] = {};
+  data[day]={};
   Object.keys(rawData[day]).forEach(task=>{
-    if(typeof rawData[day][task] === "number"){
-      data[day][task] = rawData[day][task];
+    if(typeof rawData[day][task] === "object" || typeof rawData[day][task] === "boolean"){
+      data[day][task]=rawData[day][task];
     }
   });
 });
@@ -72,6 +115,7 @@ function formatDate(){
   return new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'short'});
 }
 
+// ---------- RENDER ----------
 function render(){
   document.getElementById("date").innerText = formatDate();
 
@@ -80,46 +124,55 @@ function render(){
 
   const today = todayKey();
   let doneCount=0;
-  let totalTime=0;
 
   tasksList.forEach(task=>{
-    const selectedTime = data[today]?.[task.name];
+    const entry = data[today]?.[task.name];
 
-    if(selectedTime){
-      doneCount++;
-      totalTime += selectedTime;
-    }
+    const isDone = task.type==="check"
+      ? entry === true
+      : entry?.done;
+
+    if(isDone) doneCount++;
 
     const div=document.createElement("div");
     div.className="p-4 rounded-2xl shadow bg-white";
 
-    div.innerHTML=`
-      <div class="flex justify-between items-center">
-        <span>${task.icon} ${task.name}</span>
+    if(task.type==="time"){
+      const selectedTime = entry?.time;
 
-        <button onclick="toggle('${task.name}', ${selectedTime || 30})"
-          class="w-10 h-10 rounded-full ${selectedTime?'bg-pink-500 text-white':'bg-gray-200'}">
-          ${selectedTime?'✔':''}
-        </button>
-      </div>
+      div.innerHTML=`
+        <div class="flex justify-between items-center">
+          <span>${task.icon} ${task.name}</span>
 
-      <div class="flex gap-2 mt-3">
-        <button onclick="toggle('${task.name}',10)"
-          class="flex-1 rounded-full py-1 ${selectedTime==10?'bg-pink-200':'bg-gray-100'}">
-          10 min
-        </button>
+          <button onclick="toggleCheck('${task.name}')"
+            class="w-10 h-10 rounded-full ${isDone?'bg-pink-500 text-white':'bg-gray-200'}">
+            ${isDone?'✔':''}
+          </button>
+        </div>
 
-        <button onclick="toggle('${task.name}',15)"
-          class="flex-1 rounded-full py-1 ${selectedTime==15?'bg-pink-200':'bg-gray-100'}">
-          15 min
-        </button>
+        <div class="flex gap-2 mt-3">
+          ${[10,15,30].map(t=>`
+            <button onclick="selectTime('${task.name}',${t})"
+              class="flex-1 rounded-full py-1 ${selectedTime==t?'bg-pink-200':'bg-gray-100'}">
+              ${t} min
+            </button>
+          `).join("")}
+        </div>
+      `;
+    }
 
-        <button onclick="toggle('${task.name}',30)"
-          class="flex-1 rounded-full py-1 ${selectedTime==30?'bg-pink-200':'bg-gray-100'}">
-          30 min
-        </button>
-      </div>
-    `;
+    if(task.type==="check"){
+      div.innerHTML=`
+        <div class="flex justify-between items-center">
+          <span>${task.icon} ${task.name}</span>
+
+          <button onclick="toggleSimple('${task.name}')"
+            class="w-10 h-10 rounded-full ${isDone?'bg-pink-500 text-white':'bg-gray-200'}">
+            ${isDone?'✔':''}
+          </button>
+        </div>
+      `;
+    }
 
     container.appendChild(div);
   });
@@ -127,20 +180,36 @@ function render(){
   document.getElementById("progress").innerText=doneCount;
   document.getElementById("total").innerText=tasksList.length;
 
+  updateMessage(doneCount);
+
   renderChart();
   renderCalendar();
 }
 
-function toggle(task, minutes){
+// ---------- AÇÕES ----------
+function selectTime(task, minutes){
   const today = todayKey();
-  if(!data[today]) data[today] = {};
+  if(!data[today]) data[today]={};
+  if(!data[today][task]) data[today][task]={};
 
-  if(data[today][task] === minutes){
-    delete data[today][task];
-  } else {
-    data[today][task] = minutes;
-  }
+  data[today][task].time = minutes;
+  save();
+}
 
+function toggleCheck(task){
+  const today = todayKey();
+  if(!data[today]) data[today]={};
+  if(!data[today][task]) data[today][task]={};
+
+  data[today][task].done = !data[today][task].done;
+  save();
+}
+
+function toggleSimple(task){
+  const today = todayKey();
+  if(!data[today]) data[today]={};
+
+  data[today][task] = !data[today][task];
   save();
 }
 
@@ -149,27 +218,56 @@ function save(){
   render();
 }
 
-function getTotalTime(){
-  let total=0;
-  Object.values(data).forEach(day=>{
-    Object.values(day).forEach(time=> total+=time);
-  });
-  return total;
+// ---------- MENSAGEM + META ----------
+let lastState = 0;
+
+function updateMessage(count){
+  let msg = "Que hábitos você vai completar hoje?";
+
+  if(count >= 1) msg = "Você começou bem 💫";
+
+  if(count >= 3){
+    msg = "Você tá indo muito bem 🔥";
+
+    if(lastState < 3){
+      launchConfetti(false);
+      playSound(false);
+    }
+  }
+
+  if(count === tasksList.length){
+    msg = "Perfeito, você se superou 🌟";
+
+    if(lastState !== tasksList.length){
+      launchConfetti(true);
+      playSound(true);
+    }
+  }
+
+  lastState = count;
+
+  document.getElementById("message").innerText = msg;
 }
 
+// ---------- GRÁFICO ----------
 let chart;
 
 function renderChart(){
   const ctx=document.getElementById("chart");
 
-  const total=getTotalTime();
+  let total=0;
+  Object.values(data).forEach(day=>{
+    Object.values(day).forEach(task=>{
+      if(task?.time) total+=task.time;
+    });
+  });
 
   if(chart) chart.destroy();
 
   chart=new Chart(ctx,{
     type:"bar",
     data:{
-      labels:["Total"],
+      labels:["Tempo total"],
       datasets:[{
         label:"Minutos",
         data:[total]
@@ -178,6 +276,7 @@ function renderChart(){
   });
 }
 
+// ---------- CALENDÁRIO ----------
 function renderCalendar(){
   const calendar=document.getElementById("calendar");
   calendar.innerHTML="";
@@ -185,6 +284,7 @@ function renderCalendar(){
   const now=new Date();
   const year=now.getFullYear();
   const month=now.getMonth();
+  const today=now.getDate();
 
   const firstDay=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
@@ -194,7 +294,13 @@ function renderCalendar(){
   }
 
   for(let day=1;day<=daysInMonth;day++){
-    calendar.innerHTML += `<div class="p-2 rounded bg-gray-100">${day}</div>`;
+    let style = "bg-gray-100";
+
+    if(day === today){
+      style = "bg-pink-500 text-white";
+    }
+
+    calendar.innerHTML += `<div class="p-2 rounded ${style}">${day}</div>`;
   }
 }
 
