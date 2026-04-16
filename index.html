@@ -8,6 +8,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 *{box-sizing:border-box}
@@ -31,7 +32,7 @@
   <p id="date" class="text-sm text-gray-400"></p>
   <h1 class="text-3xl text-pink-500">Rotina da Lili 🌷</h1>
 
-  <div id="messageBox" class="mt-2 p-3 rounded-2xl bg-pink-50 text-pink-600 text-sm font-medium transition-all duration-300">
+  <div id="messageBox" class="mt-2 p-3 rounded-2xl bg-pink-50 text-pink-600 text-sm font-medium">
     <span id="message">Que hábito você vai praticar hoje?</span>
   </div>
 
@@ -56,7 +57,13 @@
 
 <div>
   <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
-  <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center"></div>
+  <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center mb-6"></div>
+</div>
+
+<!-- NOVO GRÁFICO -->
+<div class="mb-4">
+  <h3 class="text-sm font-semibold text-gray-500 mb-2">Onde você mais investiu tempo</h3>
+  <canvas id="habitChart"></canvas>
 </div>
 
 </div>
@@ -72,6 +79,7 @@ let tasksList = [
 ];
 
 let data = JSON.parse(localStorage.getItem("habits")) || {};
+let chart;
 
 function todayKey(){
   return new Date().toISOString().slice(0,10);
@@ -148,30 +156,45 @@ function render(){
   updateProgressBar(doneCount, tasksList.length);
   updateMessage(doneCount);
   updateSummary();
-
   renderCalendar();
+  renderChart();
 }
 
+// ===== TEMPO
 function selectTime(task, minutes){
   const today = todayKey();
   if(!data[today]) data[today]={};
-  if(!data[today][task]) data[today][task]={};
 
-  if(data[today][task].time === minutes){
-    delete data[today][task].time;
+  const current = data[today][task];
+
+  if(current?.time === minutes){
+    delete data[today][task];
   } else {
+    if(!data[today][task]) data[today][task]={};
     data[today][task].time = minutes;
   }
 
   save();
 }
 
+// ===== CHECK
 function toggleCheck(task){
   const today = todayKey();
   if(!data[today]) data[today]={};
-  if(!data[today][task]) data[today][task]={};
 
-  data[today][task].done = !data[today][task].done;
+  const current = data[today][task];
+
+  if(current?.done){
+    if(!current.time){
+      delete data[today][task];
+    } else {
+      current.done = false;
+    }
+  } else {
+    if(!data[today][task]) data[today][task]={};
+    data[today][task].done = true;
+  }
+
   save();
 }
 
@@ -188,48 +211,24 @@ function save(){
   render();
 }
 
+// ===== PROGRESSO
 function updateProgressBar(done,total){
   const percent = Math.round((done/total)*100);
   const bar = document.getElementById("progressBar");
-  const text = document.getElementById("progressText");
 
-  let color="bg-pink-400";
-  if(percent>=30) color="bg-blue-400";
-  if(percent>=60) color="bg-yellow-400";
-  if(percent===100) color="bg-green-500";
-
-  bar.className=`h-3 rounded-full ${color}`;
   bar.style.width=percent+"%";
-
-  text.innerText = percent>0 ? `${percent}% do dia concluído` : "";
 }
 
+// ===== MENSAGEM
 function updateMessage(count){
-  const box = document.getElementById("messageBox");
   const text = document.getElementById("message");
 
-  let msg="Que hábito você vai praticar hoje?";
-  let style="bg-pink-50 text-pink-600";
-
-  if(count>=1){
-    msg="Muito bem, você começou 💫";
-    style="bg-blue-50 text-blue-600";
-  }
-
-  if(count>=3){
-    msg="Você está indo incrível 🔥";
-    style="bg-yellow-50 text-yellow-600";
-  }
-
-  if(count===tasksList.length){
-    msg="Perfeito. Você se superou 🌟";
-    style="bg-green-50 text-green-600";
-  }
-
-  box.className=`mt-2 p-3 rounded-2xl text-sm font-medium ${style} fade-in`;
-  text.innerText=msg;
+  if(count>=3) text.innerText="Você está indo incrível 🔥";
+  else if(count>=1) text.innerText="Muito bem 💫";
+  else text.innerText="Que hábito você vai praticar hoje?";
 }
 
+// ===== RESUMO
 function updateSummary(){
   let total=0;
 
@@ -247,6 +246,7 @@ function updateSummary(){
     `${total} min • ${hours}h ${minutes}min • ${days} dias`;
 }
 
+// ===== CALENDÁRIO
 function renderCalendar(){
   const calendar=document.getElementById("calendar");
   calendar.innerHTML="";
@@ -264,11 +264,40 @@ function renderCalendar(){
   }
 
   for(let day=1;day<=daysInMonth;day++){
-    let style="bg-gray-100";
-    if(day===today) style="bg-pink-500 text-white";
-
-    calendar.innerHTML+=`<div class="p-2 rounded ${style}">${day}</div>`;
+    calendar.innerHTML+=`<div class="p-2 rounded ${day===today?'bg-pink-400 text-white':'bg-gray-100'}">${day}</div>`;
   }
+}
+
+// ===== GRÁFICO
+function renderChart(){
+  const ctx=document.getElementById("habitChart");
+
+  let totals={};
+
+  tasksList.forEach(t=>{
+    if(t.type==="time") totals[t.name]=0;
+  });
+
+  Object.values(data).forEach(day=>{
+    Object.entries(day).forEach(([task,value])=>{
+      if(value?.time){
+        totals[task]+=value.time;
+      }
+    });
+  });
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:Object.keys(totals),
+      datasets:[{
+        label:"Minutos",
+        data:Object.values(totals)
+      }]
+    }
+  });
 }
 
 render();
