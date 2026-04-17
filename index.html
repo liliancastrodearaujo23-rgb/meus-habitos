@@ -10,20 +10,12 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<style>
-.fade-in {
-  animation: fadeIn 0.4s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
 </head>
 
-<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen p-3">
+<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen p-3 pb-20">
 
-<div class="bg-white w-full max-w-md mx-auto rounded-3xl shadow-xl p-5">
+<!-- HOME -->
+<div id="homeScreen" class="bg-white w-full max-w-md mx-auto rounded-3xl shadow-xl p-5">
 
 <div class="text-center mb-4">
   <p id="date" class="text-sm text-gray-400"></p>
@@ -47,10 +39,8 @@
 
 <div id="tasks" class="space-y-3 mb-6"></div>
 
-<!-- BOTÃO SALVAR -->
-<button onclick="saveDay()" 
-  class="w-full mb-4 py-2 rounded-xl bg-pink-500 text-white text-sm">
-  Salvar dia 💾
+<button onclick="saveDay()" class="w-full mb-4 py-2 rounded-xl bg-pink-500 text-white text-sm">
+Salvar dia 💾
 </button>
 
 <div class="mb-6 p-4 bg-gray-50 rounded-2xl text-center">
@@ -63,16 +53,22 @@
   <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center mb-6"></div>
 </div>
 
-<div class="mb-4">
-  <div class="flex justify-between items-center mb-2">
-    <h3 class="text-sm font-semibold text-gray-500">Onde você mais investiu tempo</h3>
-    <button onclick="toggleView()" class="text-xs text-pink-500">
-      Alternar semana/mês
-    </button>
-  </div>
-  <canvas id="habitChart"></canvas>
 </div>
 
+<!-- GRÁFICOS -->
+<div id="chartScreen" class="hidden max-w-md mx-auto bg-white p-5 rounded-3xl shadow-xl">
+  <h2 class="text-center text-lg mb-4 text-gray-600">Seus resultados 📊</h2>
+
+  <canvas id="chartTime"></canvas>
+  <canvas id="chartEvolution" class="mt-6"></canvas>
+
+  <p id="insight" class="text-center text-sm text-gray-500 mt-4"></p>
+</div>
+
+<!-- MENU -->
+<div class="fixed bottom-0 left-0 w-full bg-white border-t shadow flex justify-around py-2">
+  <button onclick="showScreen('home')" class="text-pink-500 text-sm">🏠 Início</button>
+  <button onclick="showScreen('charts')" class="text-gray-500 text-sm">📊 Gráficos</button>
 </div>
 
 <script>
@@ -86,38 +82,18 @@ let tasksList = [
 ];
 
 let data = JSON.parse(localStorage.getItem("habits")) || {};
-let chart;
-let viewMode = "week";
-let selectedDate = todayKey();
-
-function todayKey(){
-  return new Date().toISOString().slice(0,10);
-}
-
-function formatDate(){
-  return new Date(selectedDate).toLocaleDateString('pt-BR',{
-    weekday:'long',
-    day:'numeric',
-    month:'short'
-  });
-}
+let selectedDate = new Date().toISOString().slice(0,10);
+let chart1, chart2;
 
 function render(){
-  document.getElementById("date").innerText = formatDate();
-
   const container = document.getElementById("tasks");
   container.innerHTML="";
 
-  const today = selectedDate;
   let doneCount=0;
 
   tasksList.forEach(task=>{
-    const entry = data[today]?.[task.name];
-
-    const isDone = task.type==="check"
-      ? entry === true
-      : entry?.done;
-
+    const entry = data[selectedDate]?.[task.name];
+    const isDone = task.type==="check" ? entry === true : entry?.done;
     if(isDone) doneCount++;
 
     const div=document.createElement("div");
@@ -164,66 +140,49 @@ function render(){
   document.getElementById("progress").innerText=doneCount;
   document.getElementById("total").innerText=tasksList.length;
 
-  updateProgressBar(doneCount, tasksList.length);
-  updateMessage(doneCount);
   updateSummary();
+  updateColors(doneCount);
   renderCalendar();
-  renderChart();
 }
 
-function saveDay(){
-  localStorage.setItem("habits", JSON.stringify(data));
-  alert("Dia salvo com sucesso 💾");
-}
+function updateSummary(){
+  let total = 0;
+  const todayData = data[selectedDate];
 
-// -------- AÇÕES --------
-function selectTime(task, minutes){
-  const today = selectedDate;
-  if(!data[today]) data[today]={};
-
-  const current = data[today][task];
-
-  if(current?.time === minutes){
-    delete data[today][task].time;
-    if(!data[today][task].done){
-      delete data[today][task];
-    }
-  } else {
-    if(!data[today][task]) data[today][task]={};
-    data[today][task].time = minutes;
+  if(todayData){
+    Object.values(todayData).forEach(task=>{
+      if(task?.time) total += task.time;
+    });
   }
 
-  render();
+  document.getElementById("timeSummary").innerText = total + " minutos investidos";
 }
 
-function toggleCheck(task){
-  const today = selectedDate;
-  if(!data[today]) data[today]={};
+function updateColors(count){
+  const box = document.getElementById("messageBox");
+  const bar = document.getElementById("progressBar");
 
-  const current = data[today][task];
+  box.className = "mt-2 p-3 rounded-2xl text-sm font-medium";
+  bar.className = "h-3 rounded-full transition-all duration-500";
 
-  if(current?.done){
-    current.done = false;
-    if(!current.time){
-      delete data[today][task];
-    }
-  } else {
-    if(!data[today][task]) data[today][task]={};
-    data[today][task].done = true;
+  if(count === 0){
+    box.classList.add("bg-pink-50","text-pink-600");
+    bar.classList.add("bg-pink-400");
   }
-
-  render();
+  else if(count < 3){
+    box.classList.add("bg-yellow-50","text-yellow-600");
+    bar.classList.add("bg-yellow-400");
+  }
+  else if(count < tasksList.length){
+    box.classList.add("bg-blue-50","text-blue-600");
+    bar.classList.add("bg-blue-400");
+  }
+  else{
+    box.classList.add("bg-green-50","text-green-600");
+    bar.classList.add("bg-green-400");
+  }
 }
 
-function toggleSimple(task){
-  const today = selectedDate;
-  if(!data[today]) data[today]={};
-
-  data[today][task] = !data[today][task];
-  render();
-}
-
-// -------- CALENDÁRIO --------
 function renderCalendar(){
   const calendar=document.getElementById("calendar");
   calendar.innerHTML="";
@@ -231,22 +190,29 @@ function renderCalendar(){
   const now=new Date();
   const year=now.getFullYear();
   const month=now.getMonth();
-
-  const firstDay=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
-
-  for(let i=0;i<firstDay;i++){
-    calendar.innerHTML+=`<div></div>`;
-  }
 
   for(let day=1;day<=daysInMonth;day++){
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const isSelected = dateStr === selectedDate;
+    const dayData = data[dateStr];
+
+    let color="bg-gray-100";
+
+    if(dayData){
+      let count=0;
+      Object.values(dayData).forEach(task=>{
+        if(task === true || task?.done) count++;
+      });
+
+      if(count === 0) color="bg-pink-200";
+      else if(count < 3) color="bg-yellow-200";
+      else if(count < tasksList.length) color="bg-blue-200";
+      else color="bg-green-300";
+    }
 
     calendar.innerHTML+=`
       <div onclick="selectDay('${dateStr}')"
-        class="p-2 rounded cursor-pointer 
-        ${isSelected ? 'bg-pink-400 text-white' : 'bg-gray-100'}">
+        class="p-2 rounded cursor-pointer ${color}">
         ${day}
       </div>
     `;
@@ -258,85 +224,114 @@ function selectDay(date){
   render();
 }
 
-// -------- RESTO --------
-function updateSummary(){
-  let total=0;
-  Object.values(data).forEach(day=>{
-    Object.values(day).forEach(task=>{
-      if(task?.time) total+=task.time;
-    });
-  });
-  document.getElementById("timeSummary").innerText = total+" minutos investidos";
+function saveDay(){
+  localStorage.setItem("habits", JSON.stringify(data));
+  alert("Salvo 💾");
 }
 
-function updateProgressBar(done,total){
-  const percent = Math.round((done/total)*100);
-  const bar = document.getElementById("progressBar");
-  const text = document.getElementById("progressText");
+function selectTime(task, minutes){
+  if(!data[selectedDate]) data[selectedDate]={};
+  if(!data[selectedDate][task]) data[selectedDate][task]={};
 
-  bar.style.width = percent + "%";
-  text.innerText = percent + "% concluído";
+  data[selectedDate][task].time = minutes;
+  render();
 }
 
-function updateMessage(count){
-  const text = document.getElementById("message");
-  const total = tasksList.length;
+function toggleCheck(task){
+  if(!data[selectedDate]) data[selectedDate]={};
+  if(!data[selectedDate][task]) data[selectedDate][task]={};
 
-  if(count === total){
-    text.innerText = "Perfeito, Lili! Você cumpriu tudo hoje 🧚‍♀️✨";
-  }
-  else if(count >= 3){
-    text.innerText = "Você está indo muito bem 🔥";
-  }
-  else if(count >= 1){
-    text.innerText = "Já é um bom começo 💫";
-  }
-  else{
-    text.innerText = "Que hábito você vai praticar hoje?";
+  data[selectedDate][task].done = !data[selectedDate][task].done;
+  render();
+}
+
+function toggleSimple(task){
+  if(!data[selectedDate]) data[selectedDate]={};
+  data[selectedDate][task] = !data[selectedDate][task];
+  render();
+}
+
+// NAV
+function showScreen(screen){
+  document.getElementById("homeScreen").classList.add("hidden");
+  document.getElementById("chartScreen").classList.add("hidden");
+
+  if(screen==="home"){
+    document.getElementById("homeScreen").classList.remove("hidden");
+  } else {
+    document.getElementById("chartScreen").classList.remove("hidden");
+    renderCharts();
   }
 }
 
-function renderChart(){
-  const ctx=document.getElementById("habitChart");
+// GRÁFICOS
+function renderCharts(){
+  const ctx1 = document.getElementById("chartTime");
+  const ctx2 = document.getElementById("chartEvolution");
 
   let totals={};
-  tasksList.forEach(t=>{ if(t.type==="time") totals[t.name]=0 });
-
-  const now = new Date();
-
-  Object.entries(data).forEach(([date,day])=>{
-    const d = new Date(date);
-    const diffDays = Math.floor((now - d) / (1000*60*60*24));
-
-    if(
-      (viewMode === "week" && diffDays <= 7) ||
-      (viewMode === "month" && d.getMonth() === now.getMonth())
-    ){
-      Object.entries(day).forEach(([task,value])=>{
-        if(value?.time){
-          totals[task]+=value.time;
-        }
-      });
-    }
+  tasksList.forEach(t=>{
+    if(t.type==="time") totals[t.name]=0;
   });
 
-  if(chart) chart.destroy();
+  Object.values(data).forEach(day=>{
+    Object.entries(day).forEach(([task,val])=>{
+      if(val?.time) totals[task]+=val.time;
+    });
+  });
 
-  chart=new Chart(ctx,{
+  if(chart1) chart1.destroy();
+
+  chart1 = new Chart(ctx1,{
     type:"bar",
     data:{
       labels:Object.keys(totals),
-      datasets:[{
-        label:"Minutos",
-        data:Object.values(totals)
-      }]
+      datasets:[{data:Object.values(totals)}]
     }
   });
+
+  let labels=[], values=[];
+
+  Object.entries(data).forEach(([date,day])=>{
+    let total=0;
+    Object.values(day).forEach(t=>{
+      if(t?.time) total+=t.time;
+    });
+
+    labels.push(date);
+    values.push(total);
+  });
+
+  if(chart2) chart2.destroy();
+
+  chart2 = new Chart(ctx2,{
+    type:"line",
+    data:{
+      labels:labels,
+      datasets:[{data:values}]
+    }
+  });
+
+  generateInsight();
 }
 
-function toggleView(){
-  viewMode = viewMode === "week" ? "month" : "week";
-  renderChart();
+function generateInsight(){
+  let totals={};
+
+  Object.values(data).forEach(day=>{
+    Object.entries(day).forEach(([task,val])=>{
+      if(val?.time){
+        totals[task]=(totals[task]||0)+val.time;
+      }
+    });
+  });
+
+  let maxTask = Object.keys(totals).reduce((a,b)=> totals[a]>totals[b]?a:b,null);
+
+  if(maxTask){
+    document.getElementById("insight").innerText =
+      "✨ Você mais se dedicou a: " + maxTask;
+  }
 }
 
 render();
