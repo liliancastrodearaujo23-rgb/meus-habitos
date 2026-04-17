@@ -47,6 +47,12 @@
 
 <div id="tasks" class="space-y-3 mb-6"></div>
 
+<!-- BOTÃO SALVAR -->
+<button onclick="saveDay()" 
+  class="w-full mb-4 py-2 rounded-xl bg-pink-500 text-white text-sm">
+  Salvar dia 💾
+</button>
+
 <div class="mb-6 p-4 bg-gray-50 rounded-2xl text-center">
   <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu tempo total</h3>
   <p id="timeSummary" class="text-sm text-gray-600"></p>
@@ -82,13 +88,18 @@ let tasksList = [
 let data = JSON.parse(localStorage.getItem("habits")) || {};
 let chart;
 let viewMode = "week";
+let selectedDate = todayKey();
 
 function todayKey(){
   return new Date().toISOString().slice(0,10);
 }
 
 function formatDate(){
-  return new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'short'});
+  return new Date(selectedDate).toLocaleDateString('pt-BR',{
+    weekday:'long',
+    day:'numeric',
+    month:'short'
+  });
 }
 
 function render(){
@@ -97,7 +108,7 @@ function render(){
   const container = document.getElementById("tasks");
   container.innerHTML="";
 
-  const today = todayKey();
+  const today = selectedDate;
   let doneCount=0;
 
   tasksList.forEach(task=>{
@@ -160,60 +171,20 @@ function render(){
   renderChart();
 }
 
-// PROGRESSO
-function updateProgressBar(done,total){
-  const percent = Math.round((done/total)*100);
-  const bar = document.getElementById("progressBar");
-  const text = document.getElementById("progressText");
-
-  bar.style.width = percent + "%";
-  text.innerText = percent + "% concluído";
-
-  if(percent === 100){
-    bar.className = "h-3 rounded-full bg-green-400 transition-all";
-  } else if(percent >= 50){
-    bar.className = "h-3 rounded-full bg-blue-400 transition-all";
-  } else if(percent > 0){
-    bar.className = "h-3 rounded-full bg-yellow-400 transition-all";
-  } else {
-    bar.className = "h-3 rounded-full bg-pink-400 transition-all";
-  }
+function saveDay(){
+  localStorage.setItem("habits", JSON.stringify(data));
+  alert("Dia salvo com sucesso 💾");
 }
 
-// MENSAGEM
-function updateMessage(count){
-  const text = document.getElementById("message");
-  const box = document.getElementById("messageBox");
-  const total = tasksList.length;
-
-  if(count === total){
-    text.innerText = "Perfeito, Lili! Você cumpriu tudo hoje 🧚‍♀️✨";
-    box.className = "mt-2 p-3 rounded-2xl bg-green-100 text-green-700 text-sm font-medium fade-in";
-  }
-  else if(count >= 3){
-    text.innerText = "Você está indo muito bem 🔥";
-    box.className = "mt-2 p-3 rounded-2xl bg-blue-100 text-blue-700 text-sm font-medium fade-in";
-  }
-  else if(count >= 1){
-    text.innerText = "Já é um bom começo 💫";
-    box.className = "mt-2 p-3 rounded-2xl bg-yellow-100 text-yellow-700 text-sm font-medium fade-in";
-  }
-  else{
-    text.innerText = "Que hábito você vai praticar hoje?";
-    box.className = "mt-2 p-3 rounded-2xl bg-pink-50 text-pink-600 text-sm font-medium fade-in";
-  }
-}
-
-// TEMPO (AGORA INDEPENDENTE)
+// -------- AÇÕES --------
 function selectTime(task, minutes){
-  const today = todayKey();
+  const today = selectedDate;
   if(!data[today]) data[today]={};
 
   const current = data[today][task];
 
   if(current?.time === minutes){
     delete data[today][task].time;
-
     if(!data[today][task].done){
       delete data[today][task];
     }
@@ -222,19 +193,17 @@ function selectTime(task, minutes){
     data[today][task].time = minutes;
   }
 
-  save();
+  render();
 }
 
-// CHECK (INDEPENDENTE)
 function toggleCheck(task){
-  const today = todayKey();
+  const today = selectedDate;
   if(!data[today]) data[today]={};
 
   const current = data[today][task];
 
   if(current?.done){
     current.done = false;
-
     if(!current.time){
       delete data[today][task];
     }
@@ -243,36 +212,18 @@ function toggleCheck(task){
     data[today][task].done = true;
   }
 
-  save();
-}
-
-function toggleSimple(task){
-  const today = todayKey();
-  if(!data[today]) data[today]={};
-
-  data[today][task] = !data[today][task];
-  save();
-}
-
-function save(){
-  localStorage.setItem("habits", JSON.stringify(data));
   render();
 }
 
-// RESUMO
-function updateSummary(){
-  let total=0;
+function toggleSimple(task){
+  const today = selectedDate;
+  if(!data[today]) data[today]={};
 
-  Object.values(data).forEach(day=>{
-    Object.values(day).forEach(task=>{
-      if(task?.time) total+=task.time;
-    });
-  });
-
-  document.getElementById("timeSummary").innerText = total+" minutos investidos";
+  data[today][task] = !data[today][task];
+  render();
 }
 
-// CALENDÁRIO
+// -------- CALENDÁRIO --------
 function renderCalendar(){
   const calendar=document.getElementById("calendar");
   calendar.innerHTML="";
@@ -280,7 +231,6 @@ function renderCalendar(){
   const now=new Date();
   const year=now.getFullYear();
   const month=now.getMonth();
-  const today=now.getDate();
 
   const firstDay=new Date(year,month,1).getDay();
   const daysInMonth=new Date(year,month+1,0).getDate();
@@ -290,11 +240,62 @@ function renderCalendar(){
   }
 
   for(let day=1;day<=daysInMonth;day++){
-    calendar.innerHTML+=`<div class="p-2 rounded ${day===today?'bg-pink-400 text-white':'bg-gray-100'}">${day}</div>`;
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isSelected = dateStr === selectedDate;
+
+    calendar.innerHTML+=`
+      <div onclick="selectDay('${dateStr}')"
+        class="p-2 rounded cursor-pointer 
+        ${isSelected ? 'bg-pink-400 text-white' : 'bg-gray-100'}">
+        ${day}
+      </div>
+    `;
   }
 }
 
-// GRÁFICO
+function selectDay(date){
+  selectedDate = date;
+  render();
+}
+
+// -------- RESTO --------
+function updateSummary(){
+  let total=0;
+  Object.values(data).forEach(day=>{
+    Object.values(day).forEach(task=>{
+      if(task?.time) total+=task.time;
+    });
+  });
+  document.getElementById("timeSummary").innerText = total+" minutos investidos";
+}
+
+function updateProgressBar(done,total){
+  const percent = Math.round((done/total)*100);
+  const bar = document.getElementById("progressBar");
+  const text = document.getElementById("progressText");
+
+  bar.style.width = percent + "%";
+  text.innerText = percent + "% concluído";
+}
+
+function updateMessage(count){
+  const text = document.getElementById("message");
+  const total = tasksList.length;
+
+  if(count === total){
+    text.innerText = "Perfeito, Lili! Você cumpriu tudo hoje 🧚‍♀️✨";
+  }
+  else if(count >= 3){
+    text.innerText = "Você está indo muito bem 🔥";
+  }
+  else if(count >= 1){
+    text.innerText = "Já é um bom começo 💫";
+  }
+  else{
+    text.innerText = "Que hábito você vai praticar hoje?";
+  }
+}
+
 function renderChart(){
   const ctx=document.getElementById("habitChart");
 
