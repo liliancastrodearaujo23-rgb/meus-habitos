@@ -12,7 +12,7 @@
 
 </head>
 
-<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen p-3 pb-20">
+<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen p-3 pb-24">
 
 <!-- HOME -->
 <div id="homeScreen" class="bg-white w-full max-w-md mx-auto rounded-3xl shadow-xl p-5">
@@ -65,10 +65,19 @@ Salvar dia 💾
   <p id="insight" class="text-center text-sm text-gray-500 mt-4"></p>
 </div>
 
-<!-- MENU -->
-<div class="fixed bottom-0 left-0 w-full bg-white border-t shadow flex justify-around py-2">
-  <button onclick="showScreen('home')" class="text-pink-500 text-sm">🏠 Início</button>
-  <button onclick="showScreen('charts')" class="text-gray-500 text-sm">📊 Gráficos</button>
+<!-- MENU MELHORADO -->
+<div class="fixed bottom-0 left-0 w-full bg-white border-t shadow-lg flex justify-around py-3">
+
+  <button onclick="showScreen('home')" class="flex flex-col items-center text-pink-500 font-medium">
+    <span class="text-xl">🏠</span>
+    <span class="text-xs mt-1">Início</span>
+  </button>
+
+  <button onclick="showScreen('charts')" class="flex flex-col items-center text-gray-500 font-medium">
+    <span class="text-xl">📊</span>
+    <span class="text-xs mt-1">Gráficos</span>
+  </button>
+
 </div>
 
 <script>
@@ -85,7 +94,19 @@ let data = JSON.parse(localStorage.getItem("habits")) || {};
 let selectedDate = new Date().toISOString().slice(0,10);
 let chart1, chart2;
 
+// ✅ DATA FORMATADA
+function formatDate(){
+  return new Date(selectedDate).toLocaleDateString('pt-BR',{
+    weekday:'long',
+    day:'numeric',
+    month:'long',
+    year:'numeric'
+  });
+}
+
 function render(){
+  document.getElementById("date").innerText = formatDate();
+
   const container = document.getElementById("tasks");
   container.innerHTML="";
 
@@ -183,6 +204,7 @@ function updateColors(count){
   }
 }
 
+// ✅ CALENDÁRIO CORRIGIDO
 function renderCalendar(){
   const calendar=document.getElementById("calendar");
   calendar.innerHTML="";
@@ -196,7 +218,12 @@ function renderCalendar(){
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const dayData = data[dateStr];
 
-    let color="bg-gray-100";
+    let color="bg-gray-100 text-gray-700";
+    let border="";
+
+    if(dateStr === selectedDate){
+      border = "ring-2 ring-gray-500";
+    }
 
     if(dayData){
       let count=0;
@@ -204,15 +231,23 @@ function renderCalendar(){
         if(task === true || task?.done) count++;
       });
 
-      if(count === 0) color="bg-pink-200";
-      else if(count < 3) color="bg-yellow-200";
-      else if(count < tasksList.length) color="bg-blue-200";
-      else color="bg-green-300";
+      if(count === 0){
+        color="bg-gray-200 text-gray-800";
+      }
+      else if(count < 3){
+        color="bg-yellow-200";
+      }
+      else if(count < tasksList.length){
+        color="bg-blue-200";
+      }
+      else{
+        color="bg-green-300";
+      }
     }
 
     calendar.innerHTML+=`
       <div onclick="selectDay('${dateStr}')"
-        class="p-2 rounded cursor-pointer ${color}">
+        class="p-2 rounded cursor-pointer transition ${color} ${border}">
         ${day}
       </div>
     `;
@@ -264,7 +299,7 @@ function showScreen(screen){
   }
 }
 
-// GRÁFICOS
+// GRÁFICOS (igual ao seu)
 function renderCharts(){
   const ctx1 = document.getElementById("chartTime");
   const ctx2 = document.getElementById("chartEvolution");
