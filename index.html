@@ -6,32 +6,61 @@
 
 <title>Rotina da Lili</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<style>
+body{
+  font-family: 'Inter', sans-serif;
+}
+
+.title{
+  font-family: 'Playfair Display', serif;
+}
+
+/* 🎉 CONFETE */
+.confetti{
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  background: pink;
+  top: -10px;
+  animation: fall 1.5s linear forwards;
+  z-index: 999;
+}
+
+@keyframes fall{
+  to{
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+</style>
 </head>
 
-<body class="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 min-h-screen p-3 pb-24">
+<body class="bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 min-h-screen p-3 pb-24">
 
-<!-- HOME -->
-<div id="homeScreen" class="bg-white w-full max-w-md mx-auto rounded-3xl shadow-xl p-5">
+<div id="homeScreen" class="bg-white w-full max-w-md mx-auto rounded-[30px] shadow-xl p-5">
 
 <div class="text-center mb-4">
   <p id="date" class="text-sm text-gray-400"></p>
-  <h1 class="text-3xl text-pink-500">Rotina da Lili 🌷</h1>
 
-  <div id="messageBox" class="mt-2 p-3 rounded-2xl bg-pink-50 text-pink-600 text-sm font-medium">
+  <h1 class="title text-3xl text-gray-800">
+    Rotina da Lili 🌷
+  </h1>
+
+  <div id="messageBox" class="mt-3 p-3 rounded-2xl text-sm font-medium">
     <span id="message">Que hábito você vai praticar hoje?</span>
   </div>
 
-  <p class="mt-2 text-sm text-pink-600">
+  <p class="mt-2 text-sm text-gray-600">
     <span id="progress">0</span>/<span id="total">0</span>
   </p>
 
   <div class="mt-3">
     <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-      <div id="progressBar" class="h-3 rounded-full transition-all duration-500 bg-pink-400" style="width:0%"></div>
+      <div id="progressBar" class="h-3 rounded-full transition-all duration-500"></div>
     </div>
     <p id="progressText" class="text-xs text-gray-400 mt-1 text-center"></p>
   </div>
@@ -39,43 +68,17 @@
 
 <div id="tasks" class="space-y-3 mb-6"></div>
 
-<button onclick="saveDay()" class="w-full mb-4 py-2 rounded-xl bg-pink-500 text-white text-sm">
-Salvar dia 💾
-</button>
-
-<div class="mb-6 p-4 bg-gray-50 rounded-2xl text-center">
-  <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu tempo total</h3>
-  <p id="timeSummary" class="text-sm text-gray-600"></p>
 </div>
 
-<div>
-  <h3 class="text-sm font-semibold text-gray-500 mb-2">Seu mês</h3>
-  <div id="calendar" class="grid grid-cols-7 gap-1 text-xs text-center mb-6"></div>
-</div>
+<!-- MENU CLEAN -->
+<div class="fixed bottom-0 left-0 w-full bg-white border-t flex justify-around py-3">
 
-</div>
-
-<!-- GRÁFICOS -->
-<div id="chartScreen" class="hidden max-w-md mx-auto bg-white p-5 rounded-3xl shadow-xl">
-  <h2 class="text-center text-lg mb-4 text-gray-600">Seus resultados 📊</h2>
-
-  <canvas id="chartTime"></canvas>
-  <canvas id="chartEvolution" class="mt-6"></canvas>
-
-  <p id="insight" class="text-center text-sm text-gray-500 mt-4"></p>
-</div>
-
-<!-- MENU MELHORADO -->
-<div class="fixed bottom-0 left-0 w-full bg-white border-t shadow-lg flex justify-around py-3">
-
-  <button onclick="showScreen('home')" class="flex flex-col items-center text-pink-500 font-medium">
-    <span class="text-xl">🏠</span>
-    <span class="text-xs mt-1">Início</span>
+  <button onclick="showScreen('home')" class="text-sm text-gray-700 font-medium">
+    Início
   </button>
 
-  <button onclick="showScreen('charts')" class="flex flex-col items-center text-gray-500 font-medium">
-    <span class="text-xl">📊</span>
-    <span class="text-xs mt-1">Gráficos</span>
+  <button onclick="showScreen('charts')" class="text-sm text-gray-400">
+    Gráficos
   </button>
 
 </div>
@@ -92,21 +95,9 @@ let tasksList = [
 
 let data = JSON.parse(localStorage.getItem("habits")) || {};
 let selectedDate = new Date().toISOString().slice(0,10);
-let chart1, chart2;
 
-// ✅ DATA FORMATADA
-function formatDate(){
-  return new Date(selectedDate).toLocaleDateString('pt-BR',{
-    weekday:'long',
-    day:'numeric',
-    month:'long',
-    year:'numeric'
-  });
-}
-
+// 🎯 RENDER
 function render(){
-  document.getElementById("date").innerText = formatDate();
-
   const container = document.getElementById("tasks");
   container.innerHTML="";
 
@@ -115,45 +106,21 @@ function render(){
   tasksList.forEach(task=>{
     const entry = data[selectedDate]?.[task.name];
     const isDone = task.type==="check" ? entry === true : entry?.done;
+
     if(isDone) doneCount++;
 
     const div=document.createElement("div");
-    div.className="p-4 rounded-2xl shadow bg-white";
+    div.className="p-4 rounded-3xl shadow-sm bg-gray-50";
 
-    if(task.type==="time"){
-      const selectedTime = entry?.time;
-
-      div.innerHTML=`
-        <div class="flex justify-between items-center">
-          <span>${task.icon} ${task.name}</span>
-          <button onclick="toggleCheck('${task.name}')"
-            class="w-10 h-10 rounded-full ${isDone?'bg-pink-500 text-white':'bg-gray-200'}">
-            ${isDone?'✔':''}
-          </button>
-        </div>
-
-        <div class="flex gap-2 mt-3">
-          ${[10,15,30].map(t=>`
-            <button onclick="selectTime('${task.name}',${t})"
-              class="flex-1 rounded-full py-1 ${selectedTime==t?'bg-pink-200':'bg-gray-100'}">
-              ${t} min
-            </button>
-          `).join("")}
-        </div>
-      `;
-    }
-
-    if(task.type==="check"){
-      div.innerHTML=`
-        <div class="flex justify-between items-center">
-          <span>${task.icon} ${task.name}</span>
-          <button onclick="toggleSimple('${task.name}')"
-            class="w-10 h-10 rounded-full ${isDone?'bg-pink-500 text-white':'bg-gray-200'}">
-            ${isDone?'✔':''}
-          </button>
-        </div>
-      `;
-    }
+    div.innerHTML=`
+      <div class="flex justify-between items-center">
+        <span>${task.icon} ${task.name}</span>
+        <button onclick="toggleTask('${task.name}','${task.type}')"
+          class="w-10 h-10 rounded-full ${isDone?'bg-gray-800 text-white':'bg-gray-200'}">
+          ${isDone?'✔':''}
+        </button>
+      </div>
+    `;
 
     container.appendChild(div);
   });
@@ -161,212 +128,91 @@ function render(){
   document.getElementById("progress").innerText=doneCount;
   document.getElementById("total").innerText=tasksList.length;
 
-  updateSummary();
-  updateColors(doneCount);
-  renderCalendar();
+  updateProgress(doneCount);
+  updateMessage(doneCount);
 }
 
-function updateSummary(){
-  let total = 0;
-  const todayData = data[selectedDate];
+// 📊 PROGRESSO COM %
+function updateProgress(done){
+  const total = tasksList.length;
+  const percent = Math.round((done/total)*100);
 
-  if(todayData){
-    Object.values(todayData).forEach(task=>{
-      if(task?.time) total += task.time;
-    });
-  }
-
-  document.getElementById("timeSummary").innerText = total + " minutos investidos";
-}
-
-function updateColors(count){
-  const box = document.getElementById("messageBox");
   const bar = document.getElementById("progressBar");
+  const text = document.getElementById("progressText");
 
-  box.className = "mt-2 p-3 rounded-2xl text-sm font-medium";
-  bar.className = "h-3 rounded-full transition-all duration-500";
+  bar.style.width = percent+"%";
+  text.innerText = percent+"% concluído";
 
-  if(count === 0){
-    box.classList.add("bg-pink-50","text-pink-600");
-    bar.classList.add("bg-pink-400");
+  if(percent === 100){
+    bar.className="h-3 rounded-full bg-green-400";
   }
-  else if(count < 3){
-    box.classList.add("bg-yellow-50","text-yellow-600");
-    bar.classList.add("bg-yellow-400");
+  else if(percent >= 50){
+    bar.className="h-3 rounded-full bg-blue-400";
   }
-  else if(count < tasksList.length){
-    box.classList.add("bg-blue-50","text-blue-600");
-    bar.classList.add("bg-blue-400");
+  else if(percent > 0){
+    bar.className="h-3 rounded-full bg-yellow-400";
   }
   else{
-    box.classList.add("bg-green-50","text-green-600");
-    bar.classList.add("bg-green-400");
+    bar.className="h-3 rounded-full bg-pink-400";
   }
 }
 
-// ✅ CALENDÁRIO CORRIGIDO
-function renderCalendar(){
-  const calendar=document.getElementById("calendar");
-  calendar.innerHTML="";
+// 💬 FRASES + CORES
+function updateMessage(count){
+  const box = document.getElementById("messageBox");
+  const text = document.getElementById("message");
+  const total = tasksList.length;
 
-  const now=new Date();
-  const year=now.getFullYear();
-  const month=now.getMonth();
-  const daysInMonth=new Date(year,month+1,0).getDate();
-
-  for(let day=1;day<=daysInMonth;day++){
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const dayData = data[dateStr];
-
-    let color="bg-gray-100 text-gray-700";
-    let border="";
-
-    if(dateStr === selectedDate){
-      border = "ring-2 ring-gray-500";
-    }
-
-    if(dayData){
-      let count=0;
-      Object.values(dayData).forEach(task=>{
-        if(task === true || task?.done) count++;
-      });
-
-      if(count === 0){
-        color="bg-gray-200 text-gray-800";
-      }
-      else if(count < 3){
-        color="bg-yellow-200";
-      }
-      else if(count < tasksList.length){
-        color="bg-blue-200";
-      }
-      else{
-        color="bg-green-300";
-      }
-    }
-
-    calendar.innerHTML+=`
-      <div onclick="selectDay('${dateStr}')"
-        class="p-2 rounded cursor-pointer transition ${color} ${border}">
-        ${day}
-      </div>
-    `;
+  if(count === 0){
+    text.innerText="Que hábito você vai praticar hoje?";
+    box.className="mt-3 p-3 rounded-2xl bg-pink-50 text-pink-600";
+  }
+  else if(count === 1){
+    text.innerText="Já é um bom começo!";
+    box.className="mt-3 p-3 rounded-2xl bg-yellow-50 text-yellow-600";
+  }
+  else if(count >= 3 && count < total){
+    text.innerText="Você está indo muito bem!";
+    box.className="mt-3 p-3 rounded-2xl bg-blue-50 text-blue-600";
+    launchConfetti();
+  }
+  else if(count === total){
+    text.innerText="Perfeito, você completou tudo hoje!";
+    box.className="mt-3 p-3 rounded-2xl bg-green-50 text-green-600";
+    launchConfetti(true);
   }
 }
 
-function selectDay(date){
-  selectedDate = date;
-  render();
+// 🎉 CONFETE
+function launchConfetti(big=false){
+  const amount = big ? 80 : 40;
+
+  for(let i=0;i<amount;i++){
+    const conf = document.createElement("div");
+    conf.className="confetti";
+    conf.style.left=Math.random()*100+"vw";
+    conf.style.backgroundColor = ["#f472b6","#60a5fa","#34d399","#facc15"][Math.floor(Math.random()*4)];
+    conf.style.animationDuration = (Math.random()+1)+"s";
+
+    document.body.appendChild(conf);
+
+    setTimeout(()=>conf.remove(),1500);
+  }
 }
 
-function saveDay(){
+// 🔁 TOGGLE
+function toggleTask(task,type){
+  if(!data[selectedDate]) data[selectedDate]={};
+
+  if(type==="check"){
+    data[selectedDate][task] = !data[selectedDate][task];
+  }else{
+    if(!data[selectedDate][task]) data[selectedDate][task]={};
+    data[selectedDate][task].done = !data[selectedDate][task].done;
+  }
+
   localStorage.setItem("habits", JSON.stringify(data));
-  alert("Salvo 💾");
-}
-
-function selectTime(task, minutes){
-  if(!data[selectedDate]) data[selectedDate]={};
-  if(!data[selectedDate][task]) data[selectedDate][task]={};
-
-  data[selectedDate][task].time = minutes;
   render();
-}
-
-function toggleCheck(task){
-  if(!data[selectedDate]) data[selectedDate]={};
-  if(!data[selectedDate][task]) data[selectedDate][task]={};
-
-  data[selectedDate][task].done = !data[selectedDate][task].done;
-  render();
-}
-
-function toggleSimple(task){
-  if(!data[selectedDate]) data[selectedDate]={};
-  data[selectedDate][task] = !data[selectedDate][task];
-  render();
-}
-
-// NAV
-function showScreen(screen){
-  document.getElementById("homeScreen").classList.add("hidden");
-  document.getElementById("chartScreen").classList.add("hidden");
-
-  if(screen==="home"){
-    document.getElementById("homeScreen").classList.remove("hidden");
-  } else {
-    document.getElementById("chartScreen").classList.remove("hidden");
-    renderCharts();
-  }
-}
-
-// GRÁFICOS (igual ao seu)
-function renderCharts(){
-  const ctx1 = document.getElementById("chartTime");
-  const ctx2 = document.getElementById("chartEvolution");
-
-  let totals={};
-  tasksList.forEach(t=>{
-    if(t.type==="time") totals[t.name]=0;
-  });
-
-  Object.values(data).forEach(day=>{
-    Object.entries(day).forEach(([task,val])=>{
-      if(val?.time) totals[task]+=val.time;
-    });
-  });
-
-  if(chart1) chart1.destroy();
-
-  chart1 = new Chart(ctx1,{
-    type:"bar",
-    data:{
-      labels:Object.keys(totals),
-      datasets:[{data:Object.values(totals)}]
-    }
-  });
-
-  let labels=[], values=[];
-
-  Object.entries(data).forEach(([date,day])=>{
-    let total=0;
-    Object.values(day).forEach(t=>{
-      if(t?.time) total+=t.time;
-    });
-
-    labels.push(date);
-    values.push(total);
-  });
-
-  if(chart2) chart2.destroy();
-
-  chart2 = new Chart(ctx2,{
-    type:"line",
-    data:{
-      labels:labels,
-      datasets:[{data:values}]
-    }
-  });
-
-  generateInsight();
-}
-
-function generateInsight(){
-  let totals={};
-
-  Object.values(data).forEach(day=>{
-    Object.entries(day).forEach(([task,val])=>{
-      if(val?.time){
-        totals[task]=(totals[task]||0)+val.time;
-      }
-    });
-  });
-
-  let maxTask = Object.keys(totals).reduce((a,b)=> totals[a]>totals[b]?a:b,null);
-
-  if(maxTask){
-    document.getElementById("insight").innerText =
-      "✨ Você mais se dedicou a: " + maxTask;
-  }
 }
 
 render();
