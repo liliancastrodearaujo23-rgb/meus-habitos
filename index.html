@@ -8,6 +8,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -18,6 +19,7 @@ body{
   font-family: 'Playfair Display', serif;
 }
 
+/* 🎉 CONFETE */
 .confetti{
   position: fixed;
   width: 8px;
@@ -35,7 +37,7 @@ body{
   }
 }
 
-/* MENU LATERAL */
+/* 🔹 NOVO: menu lateral */
 .sidebar{
   position: fixed;
   left: 0;
@@ -44,22 +46,22 @@ body{
   width: 80px;
   background: white;
   border-right: 1px solid #eee;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:20px;
 }
 
-/* CALENDÁRIO */
+/* 🔹 NOVO: calendário */
 .day{
-  width: 35px;
-  height: 35px;
+  width:32px;
+  height:32px;
+  border-radius:6px;
+  background:#e5e7eb;
   display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:8px;
-  background:#e5e7eb;
   cursor:pointer;
 }
 
@@ -69,15 +71,14 @@ body{
 </style>
 </head>
 
-<body class="bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 min-h-screen pl-24 p-3">
+<body class="bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 min-h-screen p-3 pl-24">
 
-<!-- MENU LATERAL -->
+<!-- 🔹 MENU LATERAL -->
 <div class="sidebar">
-  <button onclick="showScreen('home')">🏠</button>
-  <button onclick="showScreen('charts')">📊</button>
+  <button onclick="showScreen('home')">Início</button>
+  <button onclick="showScreen('charts')">Gráficos</button>
 </div>
 
-<!-- HOME -->
 <div id="homeScreen" class="bg-white w-full max-w-md mx-auto rounded-[30px] shadow-xl p-5">
 
 <div class="text-center mb-4">
@@ -107,13 +108,9 @@ body{
 
 </div>
 
-<!-- GRÁFICOS -->
+<!-- 🔹 NOVO: tela gráficos -->
 <div id="chartsScreen" class="hidden max-w-md mx-auto bg-white p-5 rounded-3xl shadow-xl">
-  <h2 class="text-xl mb-4 font-semibold">📊 Seu mês</h2>
-
-  <div id="calendar" class="grid grid-cols-7 gap-2 mb-6"></div>
-
-  <h3 class="font-semibold mb-2">⏱ Relatório</h3>
+  <div id="calendar" class="grid grid-cols-7 gap-2 mb-4"></div>
   <div id="report" class="text-sm text-gray-600"></div>
 </div>
 
@@ -130,20 +127,21 @@ let tasksList = [
 let data = JSON.parse(localStorage.getItem("habits")) || {};
 let selectedDate = new Date().toISOString().slice(0,10);
 
-// NAV
+/* 🔹 NOVO: troca de telas */
 function showScreen(screen){
   document.getElementById("homeScreen").classList.add("hidden");
   document.getElementById("chartsScreen").classList.add("hidden");
 
-  if(screen==="home") document.getElementById("homeScreen").classList.remove("hidden");
-  if(screen==="charts"){
+  if(screen==="home"){
+    document.getElementById("homeScreen").classList.remove("hidden");
+  }else{
     document.getElementById("chartsScreen").classList.remove("hidden");
     renderCalendar();
     renderReport();
   }
 }
 
-// RENDER TASKS
+// 🎯 RENDER
 function render(){
   const container = document.getElementById("tasks");
   container.innerHTML="";
@@ -159,30 +157,29 @@ function render(){
     const div=document.createElement("div");
     div.className="p-4 rounded-3xl shadow-sm bg-gray-50";
 
+    // 🔹 ALTERAÇÃO: tarefas com tempo
     if(task.type==="time"){
       div.innerHTML=`
-        <div class="flex justify-between items-center">
-          <span>${task.icon} ${task.name}</span>
-          <div class="flex gap-2">
-            ${[10,15,30].map(t=>`
-              <button onclick="setTime('${task.name}',${t})"
-              class="px-2 py-1 rounded-lg bg-gray-200 text-xs">
-              ${t}m
-              </button>
-            `).join("")}
-          </div>
+      <div class="flex justify-between items-center">
+        <span>${task.icon} ${task.name}</span>
+        <div class="flex gap-1">
+          ${[10,15,30].map(t=>`
+            <button onclick="setTime('${task.name}',${t})"
+            class="px-2 py-1 bg-gray-200 rounded text-xs">
+            ${t}m
+            </button>
+          `).join("")}
         </div>
-      `;
-    } else {
+      </div>`;
+    }else{
       div.innerHTML=`
-        <div class="flex justify-between items-center">
-          <span>${task.icon} ${task.name}</span>
-          <button onclick="toggleTask('${task.name}','check')"
-            class="w-10 h-10 rounded-full ${isDone?'bg-gray-800 text-white':'bg-gray-200'}">
-            ${isDone?'✔':''}
-          </button>
-        </div>
-      `;
+      <div class="flex justify-between items-center">
+        <span>${task.icon} ${task.name}</span>
+        <button onclick="toggleTask('${task.name}','${task.type}')"
+          class="w-10 h-10 rounded-full ${isDone?'bg-gray-800 text-white':'bg-gray-200'}">
+          ${isDone?'✔':''}
+        </button>
+      </div>`;
     }
 
     container.appendChild(div);
@@ -190,9 +187,12 @@ function render(){
 
   document.getElementById("progress").innerText=doneCount;
   document.getElementById("total").innerText=tasksList.length;
+
+  updateProgress(doneCount);
+  updateMessage(doneCount);
 }
 
-// TEMPO
+// 🔹 NOVO: salvar tempo
 function setTime(task,minutes){
   if(!data[selectedDate]) data[selectedDate]={};
   data[selectedDate][task]={done:true,time:minutes};
@@ -200,15 +200,7 @@ function setTime(task,minutes){
   render();
 }
 
-// TOGGLE
-function toggleTask(task){
-  if(!data[selectedDate]) data[selectedDate]={};
-  data[selectedDate][task] = !data[selectedDate][task];
-  localStorage.setItem("habits", JSON.stringify(data));
-  render();
-}
-
-// CALENDÁRIO
+// 🔹 NOVO: calendário
 function renderCalendar(){
   const cal=document.getElementById("calendar");
   cal.innerHTML="";
@@ -218,30 +210,29 @@ function renderCalendar(){
 
   for(let d=1;d<=days;d++){
     const date=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dayDiv=document.createElement("div");
-    dayDiv.className="day";
+    const el=document.createElement("div");
+    el.className="day";
+    el.innerText=d;
 
     let count=Object.values(data[date]||{}).filter(v=>v?.done||v===true).length;
 
-    if(count===1) dayDiv.style.background="#facc15";
-    if(count===3) dayDiv.style.background="#60a5fa";
-    if(count>=tasksList.length) dayDiv.style.background="#34d399";
+    if(count===1) el.style.background="#facc15";
+    if(count===3) el.style.background="#60a5fa";
+    if(count>=tasksList.length) el.style.background="#34d399";
 
-    dayDiv.innerText=d;
-
-    cal.appendChild(dayDiv);
+    cal.appendChild(el);
   }
 }
 
-// RELATÓRIO
+// 🔹 NOVO: relatório
 function renderReport(){
-  let totalTime=0;
+  let total=0;
   let perTask={};
 
   Object.values(data).forEach(day=>{
     Object.entries(day).forEach(([task,val])=>{
       if(val?.time){
-        totalTime+=val.time;
+        total+=val.time;
         perTask[task]=(perTask[task]||0)+val.time;
       }
     });
@@ -250,18 +241,33 @@ function renderReport(){
   const div=document.getElementById("report");
 
   div.innerHTML=`
-    <p>Total: ${formatTime(totalTime)}</p>
+    <p>Total: ${formatTime(total)}</p>
     ${Object.entries(perTask).map(([t,v])=>`<p>${t}: ${formatTime(v)}</p>`).join("")}
   `;
 }
 
-// FORMATAR TEMPO
+// 🔹 NOVO: formatação
 function formatTime(min){
   let h=Math.floor(min/60);
   let d=Math.floor(h/24);
   h=h%24;
   let m=min%60;
   return `${d}d ${h}h ${m}m`;
+}
+
+// 🔁 TOGGLE (inalterado)
+function toggleTask(task,type){
+  if(!data[selectedDate]) data[selectedDate]={};
+
+  if(type==="check"){
+    data[selectedDate][task] = !data[selectedDate][task];
+  }else{
+    if(!data[selectedDate][task]) data[selectedDate][task]={};
+    data[selectedDate][task].done = !data[selectedDate][task].done;
+  }
+
+  localStorage.setItem("habits", JSON.stringify(data));
+  render();
 }
 
 render();
